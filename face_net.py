@@ -12,8 +12,6 @@ from PIL import Image
 import os
 import torchvision.transforms as transforms
 from sklearn.metrics.pairwise import cosine_similarity
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, auc
 from tqdm import tqdm
 import argparse
 
@@ -27,12 +25,11 @@ class FaceNetDataset(Dataset):
     def __init__(self, root_dir, transform=None, limit_identities=None):
         self.root_dir = root_dir
         self.transform = transform
-        self.image_paths = []
-        self.labels = []
-        self.limit_identities = limit_identities
+        self.pairs = []
+        self.pairs_labels = []
+        self.pairs_label_names = []  # sanity check
 
         self.person_images = {}
-
         person_dirs = sorted(os.listdir(root_dir))
         if limit_identities is not None:
             person_dirs = person_dirs[:limit_identities]
@@ -40,31 +37,38 @@ class FaceNetDataset(Dataset):
         for person_dir in person_dirs:
             person_path = os.path.join(root_dir, person_dir)
             if os.path.isdir(person_path):
-                person_images = []
-                for file in os.listdir(person_path):
-                    if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        image_path = os.path.join(person_path, file)
-                        person_images.append(image_path)
-                        self.labels.append(person_dir)
-                self.person_images[person_dir] = person_images
+                image_paths = sorted([os.path.join(person_path, file)
+                                      for file in os.listdir(person_path)
+                                      if file.lower().endswith(('.png', '.jpg', '.jpeg'))])
+                self.person_images[person_dir] = image_paths
 
-        # ++++++++++++++++ Pairs +++++++++++++++++++
+        self._create_pairs(person_dirs)
 
-        self.pairs = []
-        self.pairs_labels = []
-
+    def _create_pairs(self, person_dirs):
         num_persons = len(person_dirs)
-
         for i, person_dir in enumerate(person_dirs):
             images = self.person_images[person_dir]
-            if len(images) >= 2:
-                self.pairs.append((images[0], images[1]))
-                self.pairs_labels.append(1)  # positive pair
 
-            next_person_dir = person_dirs[(i + 1) % num_persons - 1]
-            if self.person_images.get(next_person_dir) and self.person_images[next_person_dir]:
-                self.pairs.append((images[0], self.person_images[next_person_dir][0]))
-                self.pairs_labels.append(0)  # negative pair
+            if len(images) >= 2:
+                next_images = None
+                start = (i + 1) % num_persons
+                for j in range(num_persons):
+                    next_person_dir = person_dirs[(start + j) % num_persons]
+                    if next_person_dir != person_dir:
+                        next_images = self.person_images.get(next_person_dir)
+                        if next_images and len(next_images) > 0:
+                            break
+                
+                if next_images and len(next_images) > 0:
+                    self.pairs.append((images[0], next_images[0]))
+                    self.pairs_labels.append(0)
+                    self.pairs_label_names.append((person_dir, next_person_dir)) # sanity check
+
+                    self.pairs.append((images[0], images[1]))
+                    self.pairs_labels.append(1)
+                    self.pairs_label_names.append((person_dir, person_dir)) # sanity check
+            else:
+                continue
 
     def __len__(self):
         return len(self.pairs)
@@ -73,15 +77,17 @@ class FaceNetDataset(Dataset):
         sample1_path, sample2_path = self.pairs[idx]
         label = self.pairs_labels[idx]
 
-        sample1 = Image.open(sample1_path)
-        sample2 = Image.open(sample2_path)
+        try:
+            sample1 = Image.open(sample1_path).convert('RGB')
+            sample2 = Image.open(sample2_path).convert('RGB')
+        except FileNotFoundError:
+            print(f"Error: File not found for pair at index {idx}: {sample1_path}, {sample2_path}")
 
         if self.transform:
             sample1 = self.transform(sample1)
             sample2 = self.transform(sample2)
 
         return sample1, sample2, label
-
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                               FaceNet
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -138,6 +144,15 @@ def main():
             similarity = cosine_similarity(embedding1[i].reshape(1, -1), embedding2[i].reshape(1, -1))[0][0] 
             all_similarities.append(similarity)
             all_labels.append(labels_batch[i].item())
+        
+    # sanity check
+    print("Sanity Check: Pair Labels and Similarity")
+    for i in range(len(dataset.pairs)):
+        label_pair = dataset.pairs_label_names[i]
+        similarity = all_similarities[i]
+        label = all_labels[i]
+        print(f"Pair {i+1}: Labels {label_pair}, Similarity: {similarity}, Label: {label}")
+
 
     print("Metrics implementation is under construction. But this one finished. GL HF")
 
