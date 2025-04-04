@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import os
 import torchvision.transforms as transforms
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_curve, roc_auc_score, RocCurveDisplay, DetCurveDisplay
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 import argparse
@@ -110,6 +110,8 @@ transform = transforms.Compose([
 def main():
     parser = argparse.ArgumentParser(description="FaceNet face verification.")
     parser.add_argument("--limit_identities", type=int, default=None, help="Limit the number of identities to process. There are not that many (on WikiFace data)")    
+    parser.add_argument("--print_similarities", type=bool, default=False, help="Prints pair labels and cosine similarity.")
+    parser.add_argument("--evaluate_model", type=bool, default=False, help="Plot the ROC and DET curves based on the labels and model predictions.")
     args = parser.parse_args()
 
     image_dir = "datasets/WikiFaceCropped"
@@ -148,39 +150,39 @@ def main():
             all_similarities.append(similarity)
             all_labels.append(labels_batch[i].item())
         
-    # sanity check
-    print("Sanity Check: Pair Labels and Similarity")
-    for i in range(len(dataset.pairs)):
-        label_pair = dataset.pairs_label_names[i]
-        similarity = all_similarities[i]
-        label = all_labels[i]
-        print(f"Pair {i+1}: Labels {label_pair}, Similarity: {similarity}, Label: {label}")
+    # * Similarities Printing
+    if args.print_similarities == True:
 
-    # Convert lists to numpy arrays
-    similarities = np.array(all_similarities)
-    labels = np.array(all_labels)
+        print("Pair Labels and Similarity:")
+        for i in range(len(dataset.pairs)):
+            label_pair = dataset.pairs_label_names[i]
+            similarity = all_similarities[i]
+            label = all_labels[i]
+            print(f"Pair {i+1}: Labels {label_pair}, Similarity: {similarity}, Label: {label}")
 
-    # Calculate the AUC
-    auc_score = roc_auc_score(labels, similarities)
-    print(f"AUC: {auc_score:.4f}")
+    # * Model evaluation (plot the ROC and DET curves)
+    if args.evaluate_model == True:
 
-    # Calculate the ROC curve
-    fpr, tpr, thresholds = roc_curve(labels, similarities)
+        # Convert lists to numpy arrays
+        similarities = np.array(all_similarities)
+        labels = np.array(all_labels)
 
-    # Plot the ROC curve
-    plt.figure(figsize=(8, 8))
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {auc_score:.4f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
-    plt.legend(loc="lower right")
-    plt.savefig("roc.png")
+        # Plotting (source: https://scikit-learn.org/stable/auto_examples/model_selection/plot_det.html)
+        fig, [ax_roc, ax_det] = plt.subplots(1, 2, figsize=(11, 5))
 
+        # Plot ROC curve
+        roc_display = RocCurveDisplay.from_predictions(labels, similarities, ax=ax_roc, name="FaceNet")
+        ax_roc.set_title("Receiver Operating Characteristic (ROC) curve")
+        ax_roc.grid(linestyle="--")
 
-    # print("Metrics implementation is under construction. But this one finished. GL HF")
+        # Plot DET curve
+        det_display = DetCurveDisplay.from_predictions(labels, similarities, ax=ax_det, name='FaceNet')
+        ax_det.set_title("Detection Error Tradeoff (DET)")
+        ax_det.grid(linestyle="--")
+
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig("roc_det_curves.png")
 
 if __name__ == "__main__":
     main()
