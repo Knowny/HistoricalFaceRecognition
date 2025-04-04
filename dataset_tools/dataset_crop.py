@@ -6,6 +6,7 @@ import jsonlines  # Import the jsonlines library
 # * This program takes the output of the YOLO11 detector (predicted bounding boxes) and crops the original dataset
 
 def crop_face(image, detection):
+
     x_center = detection.get('x_center')
     y_center = detection.get('y_center')
     width = detection.get('bounding_box_width')
@@ -77,9 +78,9 @@ def process_images_and_detections(images_dir, detections_dir, output_dir):
                 else:
                     print(f"Warning: No detection file found for {filename}")
 
-# edit the relative paths to images and detections
+# edit the relative paths to images and detections if necessary
 images_directory = "../datasets/WikiFace"
-detections_directory = "../datasets/WikiFaceOutput/detections"
-output_faces_directory = "../datasets/WikiFaceCropped"
+detections_directory = "../datasets/WikiFaceDetectionOutput/detections"
+output_faces_directory = "../datasets/WikiFaceCropped2"
 
 process_images_and_detections(images_directory, detections_directory, output_faces_directory)

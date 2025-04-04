@@ -1,4 +1,4 @@
-# filename: data_cleanup.py
+# filename: dataset_cleanup.py
 # This file cleans up identities from data that are not usable
 #     1. remove multi identity samples
 #     2. remove samples where confidence of detection is lower than 50%
@@ -62,3 +62,22 @@ def get_clean_data(image_dir, json_dir, output_image_dir, confidence_threshold=0
                         print(f"Error processing file: {file}")
 
     return output_image_dir
+
+def main():
+
+    image_dir = "../datasets/WikiFaceCropped"
+    json_dir = "../datasets/WikiFaceDetectionOutput/detections"
+    image_dir_clean = "../datasets/WikiFaceCleaned2"
+
+    if not os.path.exists(image_dir_clean):
+        root_dir = get_clean_data(image_dir, json_dir, image_dir_clean, confidence_threshold=0.5)
+        print(f"Cleaned data saved to: {root_dir} successfully.")
+        if not root_dir:
+            print("Cleanup Failed.")
+            return
+    else:
+        root_dir = image_dir_clean
+        print(f"Clean data directory already exists, using: {root_dir}")
+
+if __name__ == "__main__":
+    main()

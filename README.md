@@ -1,6 +1,9 @@
 # HistoricalFaceRecognition
 The goal of the project is to train/adapt CNN models for facial feature extraction for identification in historical portraits such as books and magazines...
 
+## Repo structure
+- TODO
+
 ## Getting started
 - **git clone**
 - `python3 -m venv venv`
