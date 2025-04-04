@@ -44,7 +44,8 @@ datasets_examples/
 - WikiFace: TODO
 
 ## Evaluation
-- TBD
+- FaceNet (ROC, AUT, DET): 
+![image](https://github.com/user-attachments/assets/714e80b0-ce8d-4e05-884f-7da1dbda3f6f)
 
 ## Sources
 - A Survey of Face Recognition: https://arxiv.org/abs/2212.13038
