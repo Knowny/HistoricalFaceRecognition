@@ -11,9 +11,12 @@ from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import os
 import torchvision.transforms as transforms
+from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 import argparse
+import numpy as np
+import matplotlib.pyplot as plt
 
 import data_cleanup
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -106,12 +109,12 @@ transform = transforms.Compose([
 
 def main():
     parser = argparse.ArgumentParser(description="FaceNet face verification.")
-    parser.add_argument("--limit_identities", type=int, default=None, help="Limit the number of pairs to process. They are not that many (on WikiFace data)")    
+    parser.add_argument("--limit_identities", type=int, default=None, help="Limit the number of identities to process. There are not that many (on WikiFace data)")    
     args = parser.parse_args()
 
-    image_dir = "../data/WikiFaceCropped"
-    json_dir = "../data/WikiFaceOutput/detections"
-    image_dir_clean = "../data/WikiFaceCropped_clean"
+    image_dir = "datasets/WikiFaceCropped"
+    json_dir = "datasets/WikiFaceOutput/detections"
+    image_dir_clean = "datasets/WikiFaceCropped_clean"
 
     if not os.path.exists(image_dir_clean):
         root_dir = data_cleanup.get_clean_data(image_dir, json_dir, image_dir_clean, confidence_threshold=0.5)
@@ -153,8 +156,31 @@ def main():
         label = all_labels[i]
         print(f"Pair {i+1}: Labels {label_pair}, Similarity: {similarity}, Label: {label}")
 
+    # Convert lists to numpy arrays
+    similarities = np.array(all_similarities)
+    labels = np.array(all_labels)
 
-    print("Metrics implementation is under construction. But this one finished. GL HF")
+    # Calculate the AUC
+    auc_score = roc_auc_score(labels, similarities)
+    print(f"AUC: {auc_score:.4f}")
+
+    # Calculate the ROC curve
+    fpr, tpr, thresholds = roc_curve(labels, similarities)
+
+    # Plot the ROC curve
+    plt.figure(figsize=(8, 8))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {auc_score:.4f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+    plt.savefig("roc.png")
+
+
+    # print("Metrics implementation is under construction. But this one finished. GL HF")
 
 if __name__ == "__main__":
     main()
