@@ -11,14 +11,14 @@ from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import os
 import torchvision.transforms as transforms
-from sklearn.metrics import roc_curve, roc_auc_score, RocCurveDisplay, DetCurveDisplay
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 
-import data_cleanup
+from utils.baseline_evaluate import roc_det_plot
+
+# import knn.HistoricalFaceRecognition.utils.dataset_cleanup as dataset_cleanup
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                               DataLoader
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -112,22 +112,12 @@ def main():
     parser.add_argument("--limit_identities", type=int, default=None, help="Limit the number of identities to process. There are not that many (on WikiFace data)")    
     parser.add_argument("--print_similarities", type=bool, default=False, help="Prints pair labels and cosine similarity.")
     parser.add_argument("--evaluate_model", type=bool, default=False, help="Plot the ROC and DET curves based on the labels and model predictions.")
+    parser.add_argument("--dataset_root", type=str, default="../datasets/WikiFaceCleaned", help="Path to the root directory of the (cleaned) dataset images (e.g., WikiFaceCropped_clean/).")
     args = parser.parse_args()
-
-    image_dir = "datasets/WikiFaceCropped"
-    json_dir = "datasets/WikiFaceOutput/detections"
-    image_dir_clean = "datasets/WikiFaceCropped_clean"
-
-    if not os.path.exists(image_dir_clean):
-        root_dir = data_cleanup.get_clean_data(image_dir, json_dir, image_dir_clean, confidence_threshold=0.5)
-        print(f"Cleaned data saved to: {root_dir} successfully.")
-        if not root_dir:
-            print("Cleanup Failed.")
-            return
-    else:
-        root_dir = image_dir_clean
-        print(f"Clean data directory already exists, using: {root_dir}")
     
+    # Path defined via argument (default: ../datasets/WikiFaceCleaned)
+    root_dir = args.dataset_root
+
     dataset = FaceNetDataset(root_dir, transform=transform, limit_identities=args.limit_identities)
     dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
 
@@ -164,25 +154,10 @@ def main():
     if args.evaluate_model == True:
 
         # Convert lists to numpy arrays
-        similarities = np.array(all_similarities)
         labels = np.array(all_labels)
+        similarities = np.array(all_similarities)
 
-        # Plotting (source: https://scikit-learn.org/stable/auto_examples/model_selection/plot_det.html)
-        fig, [ax_roc, ax_det] = plt.subplots(1, 2, figsize=(11, 5))
-
-        # Plot ROC curve
-        roc_display = RocCurveDisplay.from_predictions(labels, similarities, ax=ax_roc, name="FaceNet")
-        ax_roc.set_title("Receiver Operating Characteristic (ROC) curve")
-        ax_roc.grid(linestyle="--")
-
-        # Plot DET curve
-        det_display = DetCurveDisplay.from_predictions(labels, similarities, ax=ax_det, name='FaceNet')
-        ax_det.set_title("Detection Error Tradeoff (DET)")
-        ax_det.grid(linestyle="--")
-
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig("roc_det_curves.png")
+        roc_det_plot(labels, similarities)
 
 if __name__ == "__main__":
     main()
