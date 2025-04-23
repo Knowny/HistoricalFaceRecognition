@@ -122,3 +122,6 @@ datasets/
 
 # DETECTOR MODEL
 ArchivalFaces_2024_08_07_fold_0_yolo11l.pt
+
+# RECOGNITION MODEL
+*.ckpt
