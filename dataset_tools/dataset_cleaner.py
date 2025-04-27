@@ -1,8 +1,6 @@
-# this will be final file which will clean all at once
-
 # filename: dataset_cleaner.py
 # project: KNN Face Recognition
-# version: 1.0
+# version: 2.0
 # author: xjanos19
 
 import os
@@ -10,12 +8,12 @@ import json
 import math
 import shutil
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
-WIKIFACE_DIR = "WikiFace"
-DETECTIONS_DIR = "WikiFaceOutput/detections"
-CLEANED_DIR = "WikiFaceCleaned"
-REMOVED_DIR = "WikiFaceRemoved"
+WIKIFACE_DIR = "datasets/WikiFace"
+DETECTIONS_DIR = "datasets/WikiFaceOutput/detections"
+CLEANED_DIR = "datasets/WikiFaceCleaned"
+REMOVED_DIR = "datasets/WikiFaceRemoved"
 
 os.makedirs(CLEANED_DIR, exist_ok=True)
 os.makedirs(REMOVED_DIR, exist_ok=True)
@@ -110,56 +108,182 @@ def crop_images(rows):
         img_path = row["path_to_image"]
         detections = row["detections"]
 
-        # Select detection with highest confidence
-        det = max(detections, key=lambda d: d.get("confidence", 1.0))
-        conf = det.get("confidence", 1.0)
+        detection_img_path = img_path.replace("WikiFace", "WikiFaceOutput/images")
+        detection_img_path = detection_img_path.replace(".jpeg", ".jpg")
 
         try:
-            x_center = round(det["x_center"])
-            y_center = round(det["y_center"])
-            width = math.ceil(det["bounding_box_width"])
-            height = math.ceil(det["bounding_box_height"])
+            img = Image.open(detection_img_path).convert("RGB")
         except Exception as e:
-            move_removed_file(identity, img_path, f"invalid bounding box values: {e}")
+            move_removed_file(identity, img_path, f"error opening detection image: {e}")
             continue
 
-        left = max(0, x_center - width // 2)
-        upper = max(0, y_center - height // 2)
-        right = left + width
-        lower = upper + height
+        if len(detections) == 1:
+            det = detections[0]
+            conf = det.get("confidence", 1.0)
 
-        try:
-            img = Image.open(img_path)
-            cropped = img.crop((left, upper, right, lower))
-        except Exception as e:
-            move_removed_file(
-                identity, img_path, f"error while reading or cropping: {e}"
+            try:
+                x_center = round(det["x_center"])
+                y_center = round(det["y_center"])
+                width = math.ceil(det["bounding_box_width"])
+                height = math.ceil(det["bounding_box_height"])
+            except Exception as e:
+                move_removed_file(
+                    identity, img_path, f"invalid bounding box values: {e}"
+                )
+                continue
+
+            left = max(0, x_center - width // 2)
+            upper = max(0, y_center - height // 2)
+            right = left + width
+            lower = upper + height
+
+            try:
+                original_img = Image.open(img_path)
+                cropped = original_img.crop((left, upper, right, lower))
+            except Exception as e:
+                move_removed_file(identity, img_path, f"error during crop: {e}")
+                continue
+
+            out_dir = os.path.join(CLEANED_DIR, identity)
+            os.makedirs(out_dir, exist_ok=True)
+
+            cropped_name = os.path.basename(img_path)
+            out_path = os.path.join(out_dir, cropped_name)
+
+            try:
+                cropped.save(out_path)
+            except Exception as e:
+                move_removed_file(
+                    identity, img_path, f"error saving cropped image: {e}"
+                )
+                continue
+
+            cropped_rows.append(
+                {
+                    "identity": identity,
+                    "path_to_image": out_path,
+                    "confidence": conf,
+                    "width": width,
+                    "height": height,
+                    "x_center": x_center,
+                    "y_center": y_center,
+                }
             )
-            continue
 
-        out_dir = os.path.join(CLEANED_DIR, identity)
-        os.makedirs(out_dir, exist_ok=True)
+        else:
+            draw = ImageDraw.Draw(img)
+            try:
+                font = ImageFont.truetype("arial.ttf", size=40)
+            except:
+                font = ImageFont.load_default()
 
-        cropped_name = os.path.basename(img_path)
-        out_path = os.path.join(out_dir, cropped_name)
+            for idx, det in enumerate(detections):
+                x_center = round(det["x_center"])
+                y_center = round(det["y_center"])
+                width = math.ceil(det["bounding_box_width"])
+                height = math.ceil(det["bounding_box_height"])
 
-        try:
-            cropped.save(out_path)
-        except Exception as e:
-            move_removed_file(
-                identity, img_path, f"error while saving cropped image: {e}"
-            )
-            continue
+                left = max(0, x_center - width // 2)
+                upper = max(0, y_center - height // 2)
+                right = left + width
+                lower = upper + height
 
-        cropped_rows.append(
-            {
-                "identity": identity,
-                "path_to_image": out_path,
-                "confidence": conf,
-                "width": width,
-                "height": height,
-            }
-        )
+                text = str(idx)
+                text_size = draw.textbbox((0, 0), text, font=font)
+                text_width = text_size[2] - text_size[0]
+                text_height = text_size[3] - text_size[1]
+
+                text_x = left + 10
+                text_y = upper + 10
+
+                padding = 6
+                draw.rectangle(
+                    [
+                        (text_x - padding, text_y - padding),
+                        (text_x + text_width + padding, text_y + text_height + padding),
+                    ],
+                    fill="black",
+                )
+                draw.text((text_x, text_y-8), text, fill="white", font=font)
+
+            print(f"\nImage: {img_path}")
+            img.show()
+
+            while True:
+                try:
+                    choice = int(
+                        input(
+                            f"Select detection index (0-{len(detections)-1}) or -1 to skip image: "
+                        ).strip()
+                    )
+                    if choice == -1:
+                        move_removed_file(
+                            identity,
+                            img_path,
+                            "user skipped image during crop selection",
+                        )
+                        break
+                    if 0 <= choice < len(detections):
+                        det = detections[choice]
+                        conf = det.get("confidence", 1.0)
+
+                        try:
+                            x_center = round(det["x_center"])
+                            y_center = round(det["y_center"])
+                            width = math.ceil(det["bounding_box_width"])
+                            height = math.ceil(det["bounding_box_height"])
+                        except Exception as e:
+                            move_removed_file(
+                                identity, img_path, f"invalid bounding box values: {e}"
+                            )
+                            break
+
+                        left = max(0, x_center - width // 2)
+                        upper = max(0, y_center - height // 2)
+                        right = left + width
+                        lower = upper + height
+
+                        try:
+                            original_img = Image.open(img_path)
+                            cropped = original_img.crop((left, upper, right, lower))
+                        except Exception as e:
+                            move_removed_file(
+                                identity, img_path, f"error during crop: {e}"
+                            )
+                            break
+
+                        out_dir = os.path.join(CLEANED_DIR, identity)
+                        os.makedirs(out_dir, exist_ok=True)
+
+                        cropped_name = os.path.basename(img_path)
+                        out_path = os.path.join(out_dir, cropped_name)
+
+                        try:
+                            cropped.save(out_path)
+                        except Exception as e:
+                            move_removed_file(
+                                identity, img_path, f"error saving cropped image: {e}"
+                            )
+                            break
+
+                        cropped_rows.append(
+                            {
+                                "identity": identity,
+                                "path_to_image": out_path,
+                                "confidence": conf,
+                                "width": width,
+                                "height": height,
+                                "x_center": x_center,
+                                "y_center": y_center,
+                            }
+                        )
+                        break
+                    else:
+                        print(
+                            f"Invalid choice. Please select between 0 and {len(detections)-1}, or -1 to skip."
+                        )
+                except ValueError:
+                    print("Invalid input. Please enter a number.")
 
     df_crop = pd.DataFrame(cropped_rows)
     df_crop.to_csv("step2_cropped.csv", index=False)
@@ -167,12 +291,50 @@ def crop_images(rows):
     return df_crop
 
 
-def filter_images_by_confidence(df_crop):
-    df_crop_filtered = df_crop[df_crop["confidence"] >= 0.7].copy()
-    rejected_conf = df_crop[df_crop["confidence"] < 0.7]
-    for _, row in rejected_conf.iterrows():
-        move_removed_file(row["identity"], row["path_to_image"], "confidence < 0.7")
+def filter_by_confidence(df_crop):
+    df_crop_filtered = []
 
+    for _, row in df_crop.iterrows():
+        identity = row["identity"]
+        img_path = row["path_to_image"]
+        confidence = row["confidence"]
+
+        if confidence >= 0.7:
+            df_crop_filtered.append(row)
+        else:
+            try:
+                img = Image.open(img_path)
+                img.show()
+            except Exception as e:
+                move_removed_file(
+                    identity,
+                    img_path,
+                    f"could not display for manual confidence check: {e}",
+                )
+                continue
+
+            while True:
+                answer = (
+                    input(
+                        f"Image {img_path} has confidence {confidence:.2f} < 0.7. Delete (y) or Keep (k)? "
+                    )
+                    .strip()
+                    .lower()
+                )
+                if answer == "y":
+                    move_removed_file(
+                        identity,
+                        img_path,
+                        f"confidence {confidence:.2f} < 0.7 – manually removed",
+                    )
+                    break
+                elif answer == "k":
+                    df_crop_filtered.append(row)
+                    break
+                else:
+                    print("Invalid input. Please type 'y' to delete or 'k' to keep.")
+
+    df_crop_filtered = pd.DataFrame(df_crop_filtered)
     df_crop_filtered.to_csv("step3_filtered_by_confidence.csv", index=False)
 
     return df_crop_filtered
@@ -199,44 +361,53 @@ def filter_by_aspect_ratio(df_crop_filtered):
                 )
                 continue
 
-            answer = (
-                input(
-                    f"Image {img_path} has width > height. Delete (y), rotate right (r), or rotate left (l)? "
-                )
-                .strip()
-                .lower()
-            )
-            if answer == "y":
-                move_removed_file(
-                    identity, img_path, "width > height – manually removed"
-                )
-            elif answer == "r":
-                try:
-                    rotated = img.rotate(-90, expand=True)  # Rotate right (clockwise)
-                    rotated.save(img_path)  # overwrite original file
-                    row["width"], row["height"] = height, width
-                    final_rows.append(row)
-                except Exception as e:
-                    move_removed_file(
-                        identity, img_path, f"error while rotating right: {e}"
+            while True:
+                answer = (
+                    input(
+                        f"Image {img_path} has width > height. Delete (y), rotate right (r), rotate left (l), or do nothing (n)? "
                     )
-            elif answer == "l":
-                try:
-                    rotated = img.rotate(
-                        90, expand=True
-                    )  # Rotate left (counter-clockwise)
-                    rotated.save(img_path)  # overwrite original file
-                    row["width"], row["height"] = height, width
-                    final_rows.append(row)
-                except Exception as e:
+                    .strip()
+                    .lower()
+                )
+                if answer == "y":
                     move_removed_file(
-                        identity, img_path, f"error while rotating left: {e}"
+                        identity, img_path, "width > height – manually removed"
                     )
-            else:
-                print("Invalid input – skipping image.")
+                    break
+                elif answer == "r":
+                    try:
+                        rotated = img.rotate(
+                            -90, expand=True
+                        )
+                        rotated.save(img_path)
+                        row["width"], row["height"] = height, width
+                        final_rows.append(row)
+                    except Exception as e:
+                        move_removed_file(
+                            identity, img_path, f"error while rotating right: {e}"
+                        )
+                    break
+                elif answer == "l":
+                    try:
+                        rotated = img.rotate(
+                            90, expand=True
+                        )
+                        rotated.save(img_path)
+                        row["width"], row["height"] = height, width
+                        final_rows.append(row)
+                    except Exception as e:
+                        move_removed_file(
+                            identity, img_path, f"error while rotating left: {e}"
+                        )
+                    break
+                elif answer == "n":
+                    final_rows.append(row)
+                    break
+                else:
+                    print("Invalid input. Please type 'y', 'r', 'l', or 'n'.")
 
     df_final = pd.DataFrame(final_rows)
-    df_final.to_csv("step4_final_cleaned_dataset.csv", index=False)
+    df_final.to_csv("cleaned_dataset.csv", index=False)
 
     return df_final
 
@@ -252,20 +423,51 @@ def cleanup():
         try:
             os.remove(f)
         except Exception as e:
-            print(f"⚠️ Could not delete {f}: {e}")
+            print(f"Could not delete {f}: {e}")
 
 
 if __name__ == "__main__":
     rows = process_images()
     df_crop = crop_images(rows)
-    df_crop_filtered = filter_images_by_confidence(df_crop)
+    df_crop_filtered = filter_by_confidence(df_crop)
     df_final = filter_by_aspect_ratio(df_crop_filtered)
 
-    # Save list of removed images with reasons
-    df_removed = pd.DataFrame(removed_entries)
-    df_removed.to_csv("removed_images_log.csv", index=False)
+    print(f"Done: {len(df_final)} final images | {len(removed_entries)} removed")
 
-    # Cleanup temporary step files
+    while True:
+        answer = (
+            input("Do you want to save 'removed_images_log.csv'? (y/n): ")
+            .strip()
+            .lower()
+        )
+        if answer == "y":
+            df_removed = pd.DataFrame(removed_entries)
+            df_removed.to_csv("removed_images_log.csv", index=False)
+            print("Saved 'removed_images_log.csv'.")
+            break
+        elif answer == "n":
+            print("Skipped saving 'removed_images_log.csv'.")
+            break
+        else:
+            print("Invalid input. Please type 'y' or 'n'.")
+
+    while True:
+        answer = (
+            input("Do you want to delete the 'WikiFaceRemoved' folder? (y/n): ")
+            .strip()
+            .lower()
+        )
+        if answer == "y":
+            try:
+                shutil.rmtree(REMOVED_DIR)
+                print("Deleted 'WikiFaceRemoved' folder.")
+            except Exception as e:
+                print(f"Error deleting folder: {e}")
+            break
+        elif answer == "n":
+            print("Kept 'WikiFaceRemoved' folder.")
+            break
+        else:
+            print("Invalid input. Please type 'y' or 'n'.")
+
     cleanup()
-
-    print(f"✅ Done: {len(df_final)} final images | {len(df_removed)} removed")
