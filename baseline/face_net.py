@@ -1,10 +1,13 @@
-# filename: face_net.py
-# pretrained model: InceptionResnetV1
-# This code uses the InceptionResnetV1 model from the facenet-pytorch library to compute face embeddings
-# project: KNN Face Recognition
-# version: 2.0
-# author: xmager00
+#!/usr/bin/env python3
+"""
+This code uses the InceptionResnetV1 model from the facenet-pytorch library to compute face embeddings
 
+filename: face_net.py
+pretrained model: InceptionResnetV1
+project: KNN Face Recognition
+version: 2.0
+author: Tereza Magerkova, xmager00
+"""
 from facenet_pytorch import InceptionResnetV1
 import torch
 from torch.utils.data import Dataset, DataLoader

@@ -5,6 +5,7 @@ when using change the input_root and output_root variables
 
 code is inspired by https://github.com/TencentARC/PhotoMaker app_v2.py
 file: run_photomaker.py
+project: KNN Face Recognition
 author: Tereza Magerkova, xmager00
 """
 import os

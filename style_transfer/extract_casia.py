@@ -5,6 +5,7 @@ Saves as .jpg files with following data folder structure:
 casia_images/<identity>/<id>.jpg
 
 file: extract_casia.py
+project: KNN Face Recognition
 author: Tereza Magerkova, xmager00
 """
 
