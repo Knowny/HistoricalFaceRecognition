@@ -3,7 +3,8 @@ import jsonlines
 from collections import defaultdict
 
 
-DETECTIONS_PATH = "../datasets/WikiFaceDetectionOutput/detections"
+# DETECTIONS_PATH = "../datasets/WikiFaceDetectionOutput/detections"
+DETECTIONS_PATH = "../datasets/stylized_images_detection_output/detections"
 CONFIDENCE_INTERVALS = 10  # Group confidence scores into 10 intervals (0.0-0.1, ..., 0.9-1.0)
 SIZE_BINS = [0, 64, 128, 256, 512, 1024, 2048]
 SIZE_LABELS = [f"<{s1}px" for s1 in SIZE_BINS[1:]] + [f">{SIZE_BINS[-1]}px"]

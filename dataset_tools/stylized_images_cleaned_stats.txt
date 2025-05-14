@@ -1,0 +1,23 @@
+Number of images: 14955
+Number of identities: 1000
+
+Confidence score distribution:
+[0.3 - 0.4): 1
+[0.6 - 0.7): 1
+[0.7 - 0.8): 12
+[0.8 - 0.9): 13579
+[0.9 - 1.0): 1362
+
+Images with confidence < 0.7:
+datasets/style/stylized_images_cleaned\000048\13.jpg
+datasets/style/stylized_images_cleaned\000710\00.jpg
+
+Image width/height distribution:
+width:<1024px, height:<1024px: 706
+width:<128px, height:<128px: 25
+width:<128px, height:<256px: 1219
+width:<256px, height:<128px: 6
+width:<256px, height:<256px: 1023
+width:<256px, height:<512px: 4419
+width:<512px, height:<1024px: 2903
+width:<512px, height:<512px: 4654
