@@ -10,7 +10,7 @@ author: Tereza Magerkova, xmager00
 """
 from facenet_pytorch import InceptionResnetV1
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from PIL import Image
 import os
 import torchvision.transforms as transforms
@@ -18,6 +18,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
 
 from utils.baseline_evaluate import roc_det_plot
 
@@ -34,10 +35,6 @@ class FaceNetDataset(Dataset):
     def __init__(self, root_dir, transform=None, limit_identities=None):
         self.root_dir = root_dir
         self.transform = transform
-        self.pairs = []
-        self.pairs_labels = []
-        self.pairs_label_names = []  # sanity check
-
         self.person_images = {}
         person_dirs = sorted(os.listdir(root_dir))
         if limit_identities is not None:
@@ -46,57 +43,25 @@ class FaceNetDataset(Dataset):
         for person_dir in person_dirs:
             person_path = os.path.join(root_dir, person_dir)
             if os.path.isdir(person_path):
-                image_paths = sorted([os.path.join(person_path, file)
-                                      for file in os.listdir(person_path)
-                                      if file.lower().endswith(('.png', '.jpg', '.jpeg'))])
+                image_paths = sorted([
+                    os.path.join(person_path, f)
+                    for f in os.listdir(person_path)
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+                ])
                 self.person_images[person_dir] = image_paths
 
-        self._create_pairs(person_dirs)
-
-    def _create_pairs(self, person_dirs):
-        num_persons = len(person_dirs)
-        for i, person_dir in enumerate(person_dirs):
-            images = self.person_images[person_dir]
-
-            if len(images) >= 2:
-                next_images = None
-                start = (i + 1) % num_persons
-                for j in range(num_persons):
-                    next_person_dir = person_dirs[(start + j) % num_persons]
-                    if next_person_dir != person_dir:
-                        next_images = self.person_images.get(next_person_dir)
-                        if next_images and len(next_images) > 0:
-                            break
-                
-                if next_images and len(next_images) > 0:
-                    self.pairs.append((images[0], next_images[0]))
-                    self.pairs_labels.append(0)
-                    self.pairs_label_names.append((person_dir, next_person_dir)) # sanity check
-
-                    self.pairs.append((images[0], images[1]))
-                    self.pairs_labels.append(1)
-                    self.pairs_label_names.append((person_dir, person_dir)) # sanity check
-            else:
-                continue
-
     def __len__(self):
-        return len(self.pairs)
+        # Total number of images
+        return sum(len(v) for v in self.person_images.values())
 
-    def __getitem__(self, idx):
-        sample1_path, sample2_path = self.pairs[idx]
-        label = self.pairs_labels[idx]
+    def get_all_items(self):
+        # Returns list of (image_path, person_id)
+        items = []
+        for pid, paths in self.person_images.items():
+            for p in paths:
+                items.append((p, pid))
+        return items
 
-        try:
-            sample1 = Image.open(sample1_path).convert('RGB')
-            sample2 = Image.open(sample2_path).convert('RGB')
-        except FileNotFoundError:
-            print(f"Error: File not found for pair at index {idx}: {sample1_path}, {sample2_path}")
-
-        if self.transform:
-            sample1 = self.transform(sample1)
-            sample2 = self.transform(sample2)
-
-        return sample1, sample2, label
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                               FaceNet
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -117,49 +82,66 @@ def main():
     parser = argparse.ArgumentParser(description="FaceNet face verification.")
     parser.add_argument("--limit_identities", type=int, default=None, help="Limit the number of identities to process. There are not that many (on WikiFace data)")    
     parser.add_argument("--print_similarities", type=bool, default=False, help="Prints pair labels and cosine similarity.")
-    parser.add_argument("--evaluate_model", type=bool, default=False, help="Plot the ROC and DET curves based on the labels and model predictions.")
-    parser.add_argument("--dataset_root", type=str, default="../datasets/WikiFaceCleaned", help="Path to the root directory of the (cleaned) dataset images (e.g., ../datasets/WikiFaceCleaned).")
+    parser.add_argument("--evaluate_model", type=bool, default=True, help="Plot the ROC and DET curves based on the labels and model predictions.")
+    parser.add_argument("--dataset_root", type=str, default="../datasets/stylized_images", help="Path to the root directory of the (cleaned) dataset images (e.g., ../datasets/WikiFaceCleaned).")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size for embedding computation.")
     args = parser.parse_args()
-    
-    # Path defined via argument (default: ../datasets/WikiFaceCleaned)
-    root_dir = args.dataset_root
 
-    dataset = FaceNetDataset(root_dir, transform=transform, limit_identities=args.limit_identities)
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
+    dataset = FaceNetDataset(args.dataset_root, transform=transform, limit_identities=args.limit_identities)
 
     def get_embedding(tensor):
+        # Obtain embeddings from the FaceNet model without gradient tracking
         with torch.no_grad():
-            embedding = model(tensor)
-        return embedding.cpu().numpy()
+            return model(tensor).cpu().numpy()
 
+    # 1) Gather all images and their labels
+    items = dataset.get_all_items()
+    image_paths, labels_list = zip(*items)
+    image_paths = list(image_paths)
+    labels_list = list(labels_list)
+
+    # 2) Compute embeddings in batches
+    embeddings = []
+    for i in tqdm(range(0, len(image_paths), args.batch_size), desc="Embedding images"):
+        batch = image_paths[i:i+args.batch_size]
+        tensors = [transform(Image.open(p).convert('RGB')) for p in batch]
+        batch_tensor = torch.stack(tensors)
+        embeddings.append(get_embedding(batch_tensor))
+    all_embeddings = np.vstack(embeddings)
+
+    # 3) Compute cosine similarity matrix between all embeddings
+    sim_matrix = cosine_similarity(all_embeddings)
+
+    # 4) Build lists of similarity scores and ground-truth labels (all-vs-all pairs)
     all_similarities = []
     all_labels = []
+    n = sim_matrix.shape[0]
+    for i in range(n):
+        for j in range(i+1, n):
+            all_similarities.append(sim_matrix[i, j])
+            # Label = 1 if same identity, 0 if different identities
+            all_labels.append(int(labels_list[i] == labels_list[j]))
 
-    loop = tqdm(dataloader, desc="Processing Batches", unit=" batch")
+    # Write each pair index, similarity and label
+    if args.print_similarities:
+        print("All-vs-All Pair Similarities:")
+        idx = 1
+        for i in range(n):
+            for j in range(i+1, n):
+                label = int(labels_list[i] == labels_list[j])
+                print(f"Pair {idx}: ({i},{j}), sim={sim_matrix[i,j]:.4f}, label={label}")
+                idx += 1
 
-    # ! CHANGE - neporovnavat pary ... ale KAZDE S KAZDYM ... (neporovnavat identicke fotky)
-    for sample1_batch, sample2_batch, labels_batch in loop:
-        embedding1 = get_embedding(sample1_batch)
-        embedding2 = get_embedding(sample2_batch)
+    # Plot the full cosine similarity matrix for visualization
+    plt.figure()
+    plt.imshow(sim_matrix)
+    plt.title('Cosine Similarity Matrix')
+    plt.xlabel('Image Index')
+    plt.ylabel('Image Index')
+    plt.colorbar()
+    plt.savefig(f"cosine_similarity_matrix_facenet.png")
 
-        for i in range(len(embedding1)):
-            similarity = cosine_similarity(embedding1[i].reshape(1, -1), embedding2[i].reshape(1, -1))[0][0] 
-            all_similarities.append(similarity)
-            all_labels.append(labels_batch[i].item())
-        
-    # * Similarities Printing
-    if args.print_similarities == True:
-
-        print("Pair Labels and Similarity:")
-        for i in range(len(dataset.pairs)):
-            label_pair = dataset.pairs_label_names[i]
-            similarity = all_similarities[i]
-            label = all_labels[i]
-            print(f"Pair {i+1}: Labels {label_pair}, Similarity: {similarity}, Label: {label}")
-
-    # ! CHANGE
-
-    # * Model evaluation (plot the ROC and DET curves)
+    # Model evaluation (plot the ROC and DET curves)
     if args.evaluate_model == True:
 
         # Convert lists to numpy arrays
