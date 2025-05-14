@@ -61,7 +61,7 @@ def rgb_to_bgr(x: torch.Tensor) -> torch.Tensor:
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-
+    # print(torch.cuda.is_available(), torch.version.cuda)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running on {device}, fine-tuning AdaFace for {EPOCHS} epochs")
 
@@ -120,7 +120,7 @@ def main():
     ).to(device)
 
     # load pretrained backbone weights (ignore head mismatch)
-    ckpt = torch.load(PRETRAINED_CKPT, map_location="cpu", weights_only=False)
+    ckpt = torch.load(PRETRAINED_CKPT, weights_only=False)
     state_dict = ckpt.get("state_dict", ckpt)
     backbone.load_state_dict(state_dict, strict=False)
 
