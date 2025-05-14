@@ -422,7 +422,7 @@ def filter_by_aspect_ratio(df_crop_filtered):
                     print("Invalid input. Please type 'y', 'r', 'l', or 'n'.")
 
     df_final = pd.DataFrame(final_rows)
-    df_final.to_csv("cleaned_dataset.csv", index=False)
+    df_final.to_csv(f"{DATASET_NAME}_cleaned_dataset.csv", index=False)
 
     return df_final
 
@@ -457,7 +457,7 @@ if __name__ == "__main__":
         )
         if answer == "y":
             df_removed = pd.DataFrame(removed_entries)
-            df_removed.to_csv("removed_images_log.csv", index=False)
+            df_removed.to_csv(f"{DATASET_NAME}_removed_images_log.csv", index=False)
             print("Saved 'removed_images_log.csv'.")
             break
         elif answer == "n":
