@@ -17,6 +17,8 @@ import argparse
 import net
 from utils.baseline_evaluate import roc_det_plot
 
+MODEL_NAME = "AdaFace"
+
 adaface_models = {
     'ir_50': "../models/adaface_ir50_ms1mv2.ckpt.ckpt",
 }
@@ -24,7 +26,7 @@ adaface_models = {
 def load_pretrained_model(architecture='ir_50'):
     assert architecture in adaface_models.keys()
     model = net.build_model(architecture)
-    checkpoint = torch.load("../models/adaface_ir50_ms1mv2.ckpt", map_location=torch.device('cpu'), weights_only=False)
+    checkpoint = torch.load("../models/adaface_ir50_ms1mv2.ckpt", map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"), weights_only=False)
     statedict = checkpoint['state_dict']
     model_statedict = {key[6:]: val for key, val in statedict.items() if key.startswith('model.')}
     model.load_state_dict(model_statedict)
@@ -101,7 +103,7 @@ def main():
     parser.add_argument("--limit_identities", type=int, default=None)
     parser.add_argument("--print_similarities", type=bool, default=False)
     parser.add_argument("--evaluate_model", type=bool, default=False)
-    parser.add_argument("--dataset_root", type=str, default="../datasets_examples/WikiFaceCleaned")
+    parser.add_argument("--dataset_root", type=str, default="../datasets/WikiFaceCleaned")
     args = parser.parse_args()
 
     model = load_pretrained_model()
@@ -138,7 +140,7 @@ def main():
             print(f"Pair {i+1}: {label_pair}, Similarity: {all_similarities[i]:.4f}, Label: {all_labels[i]}")
 
     if args.evaluate_model:
-        roc_det_plot(np.array(all_labels), np.array(all_similarities))
+        roc_det_plot(np.array(all_labels), np.array(all_similarities), MODEL_NAME)
 
 if __name__ == "__main__":
     main()

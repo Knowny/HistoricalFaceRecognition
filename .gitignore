@@ -126,5 +126,6 @@ ArchivalFaces_2024_08_07_fold_0_yolo11l.pt
 # RECOGNITION MODEL
 *.ckpt
 
-# WRITER
-/runs
+# FINETUNING FILES
+runs
+adaface_checkpoints
