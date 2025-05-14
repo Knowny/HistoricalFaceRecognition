@@ -19,6 +19,9 @@ import numpy as np
 from utils.baseline_evaluate import roc_det_plot
 
 # import knn.HistoricalFaceRecognition.utils.dataset_cleanup as dataset_cleanup
+
+MODEL_NAME = "FaceNet"
+
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                               DataLoader
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -157,7 +160,7 @@ def main():
         labels = np.array(all_labels)
         similarities = np.array(all_similarities)
 
-        roc_det_plot(labels, similarities)
+        roc_det_plot(labels, similarities, MODEL_NAME)
 
 if __name__ == "__main__":
     main()
