@@ -24,13 +24,13 @@ import numpy as np
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                        Run parameters
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-DATA_DIR = "../datasets/stylized_images"  # root folder with subfolders per identity
+DATA_DIR = "../datasets/casia_stylized"  # root folder with subfolders per identity
 PRETRAINED_CKPT = (
     "../models/adaface_ir50_ms1mv2.ckpt"  # path to pretrained AdaFace checkpoint
 )
 OUTPUT_DIR = "../models/adaface_checkpoints"  # where to save fine-tuned checkpoints
 BATCH_SIZE = 32  # number of samples per batch
-EPOCHS = 10  # total number of training epochs
+EPOCHS = 20  # total number of training epochs
 LR = 0.01  # initial learning rate
 
 # dynamically compute milestones at 50% and 75% of total epochs
@@ -39,6 +39,22 @@ milestone2 = int(0.75 * EPOCHS)
 MILESTONES = [milestone1, milestone2]  # epochs at which to decay LR
 
 NUM_WORKERS = 4  # number of DataLoader workers
+
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#                    AdaFace-margin schedule
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Stage 1: pure cosine-softmax (no margin)
+INIT_M = 0.0
+INIT_H = 0.0
+INIT_S = 32.0
+# With m=0.0 and h=0.0 the head’s forward is just logits=s⋅cos(θ) which can learn to separate your 50 classes on fixed embeddings.
+
+# Stage 2: full AdaFace margin
+NEW_M = 0.4
+NEW_H = 0.333
+NEW_S = 64.0
+
+SWITCH_EPOCH = 10  # switch right after halfway
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -111,10 +127,10 @@ def main():
         head_type="adaface",
         embedding_size=512,
         class_num=num_classes,
-        m=0.4,  # angular margin
+        m=INIT_M,  # angular margin
         t_alpha=1.0,  # temperature for adaptive margin
-        h=0.333,  # adaptive margin scale
-        s=64.0,  # feature scale
+        h=INIT_H,  # adaptive margin scale
+        s=INIT_S,  # feature scale
     ).to(device)
 
     # load pretrained backbone weights (ignore head mismatch)
@@ -122,14 +138,31 @@ def main():
     state_dict = ckpt.get("state_dict", ckpt)
     backbone.load_state_dict(state_dict, strict=False)
 
+    # freeze backbone parameters so only head is trained
+    for name, param in backbone.named_parameters():
+        if "layer4" in name:
+            param.requires_grad = True
+        else:
+            param.requires_grad = False
+    backbone.train()  # set backbone to eval mode (freeze BatchNorm, etc.)
+
     # ---------------------- loss, optimizer, scheduler ------------------------
     criterion = nn.CrossEntropyLoss().to(device)
+
     optimizer = torch.optim.SGD(
-        list(backbone.parameters()) + list(head.parameters()),
-        lr=LR,
+        [
+            {
+                "params": [
+                    p for n, p in backbone.named_parameters() if p.requires_grad
+                ],
+                "lr": 1e-3,
+            },
+            {"params": head.parameters(), "lr": 1e-2},
+        ],
         momentum=0.9,
         weight_decay=5e-4,
     )
+
     scheduler = MultiStepLR(
         optimizer, milestones=MILESTONES, gamma=0.1  # decay LR at specified epochs
     )
@@ -140,7 +173,16 @@ def main():
     # ---------------------------- training loop -------------------------------
     for epoch in range(1, EPOCHS + 1):
         # ----- training phase -----
-        backbone.train()
+        if epoch == SWITCH_EPOCH + 1:
+            head.m = NEW_M
+            head.h = NEW_H
+            head.s = NEW_S
+            print(
+                f"==> Epoch {epoch}: Switched AdaFace margin to "
+                f"m={head.m}, h={head.h}, s={head.s}"
+            )
+
+        backbone.train()  # keep backbone in eval mode
         head.train()
         train_loss = 0.0
         train_correct = 0
@@ -149,7 +191,7 @@ def main():
         for imgs, labels in train_loader:
             imgs, labels = imgs.to(device), labels.to(device)
 
-            # forward pass through backbone and head
+            # forward pass through frozen backbone and trainable head
             embeddings, norms = backbone(imgs)
             logits = head(embeddings, norms, labels)
             loss = criterion(logits, labels)
@@ -197,8 +239,8 @@ def main():
         # ----- log results and save checkpoint -----
         print(
             f"Epoch {epoch}/{EPOCHS}  "
-            f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.2f}%  |  "
-            f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.2f}%"
+            f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}%  |  "
+            f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}%"
         )
 
         writer.add_scalar("Loss/train", train_loss, epoch)
