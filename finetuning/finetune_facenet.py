@@ -20,9 +20,10 @@ import torchvision.transforms as transforms
 from facenet_pytorch import InceptionResnetV1, training, fixed_image_standardization
 import numpy as np
 
-DATA_DIR = "../data/casia_stylized"
+DATA_DIR = "../../data/casia_stylized"
 BATCH_SIZE = 32
-EPOCHS = 10 # set to 10 for testing
+HEAD_ONLY = 0.3
+EPOCHS = 10
 LR = 0.001
 NUM_CLASSES = 1000  # set to 1000 from style transfer generation
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -45,19 +46,22 @@ class CasiaStylizedDataset(Dataset):
                         self.images.append(img_path)
                         self.labels.append(label)
 
+        uniq_labels = sorted(set(self.labels))
+        self.label_to_idx = {lab: idx for idx, lab in enumerate(uniq_labels)}
+
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, idx):
-        sample_path = self.images[idx]
-        label = self.labels[idx]
-
-        img = Image.open(sample_path).convert('RGB')
+        img = Image.open(self.images[idx]).convert('RGB')
 
         if self.transform:
             sample = self.transform(img)
 
-        return sample, label
+        label_str = self.labels[idx]
+        label = self.label_to_idx[label_str]
+
+        return sample, torch.tensor(label, dtype=torch.long)
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                        Run parameters
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -67,7 +71,7 @@ print(f"Running on {device}, for {EPOCHS} epochs")
 
 # ----------------------------- data ------------------------------
 transform = transforms.Compose([
-    np.float32,
+    transforms.Resize((160, 160)),
     transforms.ToTensor(),
     fixed_image_standardization
 ])
@@ -89,13 +93,25 @@ model = InceptionResnetV1(
     num_classes=NUM_CLASSES
 ).to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-scheduler = MultiStepLR(optimizer, [5, 10])
+# stage 1: freeze backbone and train only classification head and its BN
+for param in model.parameters():
+    param.requires_grad = False
+
+for param in model.last_linear.parameters():
+    param.requires_grad = True
+for param in model.last_bn.parameters():
+    param.requires_grad = True
+optimizer_stage1 = torch.optim.Adam(
+    list(model.last_linear.parameters()) +
+    list(model.last_bn.parameters()),
+    lr=LR
+)
+scheduler_stage1 = MultiStepLR(optimizer_stage1, milestones=[3], gamma=0.1)
+
 loss = torch.nn.CrossEntropyLoss()
 # metrics followed during training
 metrics = {
-    'fps': training.BatchTimer(),
-    'acc': training.accuracy
+    'accuracy': training.accuracy
 }
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -106,16 +122,39 @@ metrics = {
 writer = SummaryWriter(log_dir='logs')
 writer.iteration, writer.interval = 0, 10
 
-print("Validating before any training")
-model.eval()
-training.pass_epoch(model, loss, val_loader, batch_metrics=metrics, device=device, writer=writer)
-print("Starting training")
+head_only_epochs = int(EPOCHS * HEAD_ONLY)
 
-for epoch in range(EPOCHS):
+print("Validating before any training")
+# model.eval()
+# training.pass_epoch(model, loss, val_loader, batch_metrics=metrics, device=device, writer=writer)
+# ------------------------ Stage 1 ----------------------------------
+print(f"Stage 1: head only training for {head_only_epochs} epochs")
+for epoch in range(head_only_epochs):
     print(f"\nEpoch {epoch + 1}/{EPOCHS}")
     
     model.train()
-    training.pass_epoch(model, loss, train_loader, optimizer=optimizer, scheduler=scheduler, device=device, writer=writer, batch_metrics=metrics)
+    training.pass_epoch(model, loss, train_loader, optimizer=optimizer_stage1, scheduler=scheduler_stage1, device=device, writer=writer, batch_metrics=metrics)
+
+    model.eval()
+    training.pass_epoch(model, loss, val_loader, batch_metrics=metrics, device=device, writer=writer)
+# ------------------------ Stage 2 ----------------------------------
+print(f"Stage 2: unfreeze and finetune all layers")
+for param in model.parameters():
+    param.requires_grad = True
+
+optimizer_stage2 = torch.optim.Adam([
+    {'params': model.last_linear.parameters(), 'lr': LR},
+    {'params': model.last_bn.parameters(),    'lr': LR},
+    {'params': [p for n,p in model.named_parameters()
+                if 'last_linear' not in n and 'last_bn' not in n],
+     'lr': LR * 0.1}
+])
+scheduler_stage2 = MultiStepLR(optimizer_stage2, milestones=[5, 8], gamma=0.1)
+
+for epoch in range(head_only_epochs, EPOCHS):
+    print(f"\nEpoch {epoch + 1}/{EPOCHS}")
+    model.train()
+    training.pass_epoch(model, loss, train_loader, optimizer=optimizer_stage2, scheduler=scheduler_stage2, device=device, writer=writer, batch_metrics=metrics)
 
     model.eval()
     training.pass_epoch(model, loss, val_loader, batch_metrics=metrics, device=device, writer=writer)
