@@ -10,10 +10,20 @@ import shutil
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 
-WIKIFACE_DIR = "datasets/WikiFace"
-DETECTIONS_DIR = "datasets/WikiFaceOutput/detections"
-CLEANED_DIR = "datasets/WikiFaceCleaned"
-REMOVED_DIR = "datasets/WikiFaceRemoved"
+
+# * UNCOMMENT, if dataset == WikiFace
+# DATASET_DIR = "datasets/WikiFace"
+# DETECTIONS_DIR = "datasets/WikiFaceOutput/detections"
+# CLEANED_DIR = "datasets/WikiFaceCleaned"
+# REMOVED_DIR = "datasets/WikiFaceRemoved"
+# DATASET_NAME = 'WikiFace'
+
+# * UNCOMMENT, if dataset == stylized_imaged
+DATASET_DIR = "datasets/style/stylized_images"
+DETECTIONS_DIR = "datasets/style/stylized_images_detection_output/detections"
+CLEANED_DIR = "datasets/style/stylized_images_cleaned"
+REMOVED_DIR = "datasets/style/stylized_images_removed"
+DATASET_NAME = 'stylized_images'
 
 os.makedirs(CLEANED_DIR, exist_ok=True)
 os.makedirs(REMOVED_DIR, exist_ok=True)
@@ -66,8 +76,8 @@ def parse_jsonl(path):
 def process_images():
     rows = []
 
-    for identity in list_identities(WIKIFACE_DIR):
-        image_dir = os.path.join(WIKIFACE_DIR, identity)
+    for identity in list_identities(DATASET_DIR):
+        image_dir = os.path.join(DATASET_DIR, identity)
         for img_name in list_images(image_dir):
             img_path = os.path.join(image_dir, img_name)
             det_path = jsonl_path(identity, img_name)
@@ -108,8 +118,13 @@ def crop_images(rows):
         img_path = row["path_to_image"]
         detections = row["detections"]
 
-        detection_img_path = img_path.replace("WikiFace", "WikiFaceOutput/images")
-        detection_img_path = detection_img_path.replace(".jpeg", ".jpg")
+        if DATASET_NAME == "WikiFace":
+            detection_img_path = img_path.replace("WikiFace", "WikiFaceOutput/images")
+            detection_img_path = detection_img_path.replace(".jpeg", ".jpg")
+
+        if DATASET_NAME == "stylized_images":
+            detection_img_path = img_path.replace("stylized_images", "stylized_images_detection_output/images")
+            detection_img_path = detection_img_path.replace(".jpeg", ".jpg")
 
         try:
             img = Image.open(detection_img_path).convert("RGB")
@@ -325,7 +340,7 @@ def filter_by_confidence(df_crop):
                     move_removed_file(
                         identity,
                         img_path,
-                        f"confidence {confidence:.2f} < 0.7 – manually removed",
+                        f"confidence {confidence:.2f} < 0.7 - manually removed",
                     )
                     break
                 elif answer == "k":
@@ -371,7 +386,7 @@ def filter_by_aspect_ratio(df_crop_filtered):
                 )
                 if answer == "y":
                     move_removed_file(
-                        identity, img_path, "width > height – manually removed"
+                        identity, img_path, "width > height - manually removed"
                     )
                     break
                 elif answer == "r":
@@ -453,19 +468,19 @@ if __name__ == "__main__":
 
     while True:
         answer = (
-            input("Do you want to delete the 'WikiFaceRemoved' folder? (y/n): ")
+            input(f"Do you want to delete the {REMOVED_DIR} folder? (y/n): ")
             .strip()
             .lower()
         )
         if answer == "y":
             try:
                 shutil.rmtree(REMOVED_DIR)
-                print("Deleted 'WikiFaceRemoved' folder.")
+                print(f"Deleted {REMOVED_DIR} folder.")
             except Exception as e:
                 print(f"Error deleting folder: {e}")
             break
         elif answer == "n":
-            print("Kept 'WikiFaceRemoved' folder.")
+            print(f"Kept {REMOVED_DIR} folder.")
             break
         else:
             print("Invalid input. Please type 'y' or 'n'.")
