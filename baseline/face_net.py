@@ -137,6 +137,7 @@ def main():
 
     loop = tqdm(dataloader, desc="Processing Batches", unit=" batch")
 
+    # ! CHANGE - neporovnavat pary ... ale KAZDE S KAZDYM ... (neporovnavat identicke fotky)
     for sample1_batch, sample2_batch, labels_batch in loop:
         embedding1 = get_embedding(sample1_batch)
         embedding2 = get_embedding(sample2_batch)
@@ -155,6 +156,8 @@ def main():
             similarity = all_similarities[i]
             label = all_labels[i]
             print(f"Pair {i+1}: Labels {label_pair}, Similarity: {similarity}, Label: {label}")
+
+    # ! CHANGE
 
     # * Model evaluation (plot the ROC and DET curves)
     if args.evaluate_model == True:
