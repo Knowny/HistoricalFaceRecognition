@@ -24,9 +24,7 @@ import numpy as np
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                        Run parameters
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-DATA_DIR = (
-    "../datasets_examples/casia_stylized"  # root folder with subfolders per identity
-)
+DATA_DIR = "../datasets/stylized_images"  # root folder with subfolders per identity
 PRETRAINED_CKPT = (
     "../models/adaface_ir50_ms1mv2.ckpt"  # path to pretrained AdaFace checkpoint
 )
