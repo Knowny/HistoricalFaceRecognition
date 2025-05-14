@@ -118,7 +118,7 @@ def main():
     parser.add_argument("--limit_identities", type=int, default=None, help="Limit the number of identities to process. There are not that many (on WikiFace data)")    
     parser.add_argument("--print_similarities", type=bool, default=False, help="Prints pair labels and cosine similarity.")
     parser.add_argument("--evaluate_model", type=bool, default=False, help="Plot the ROC and DET curves based on the labels and model predictions.")
-    parser.add_argument("--dataset_root", type=str, default="../datasets/WikiFaceCleaned", help="Path to the root directory of the (cleaned) dataset images (e.g., WikiFaceCropped_clean/).")
+    parser.add_argument("--dataset_root", type=str, default="../datasets/WikiFaceCleaned", help="Path to the root directory of the (cleaned) dataset images (e.g., ../datasets/WikiFaceCleaned).")
     args = parser.parse_args()
     
     # Path defined via argument (default: ../datasets/WikiFaceCleaned)
