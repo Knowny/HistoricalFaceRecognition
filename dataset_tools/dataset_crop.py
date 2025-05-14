@@ -3,6 +3,10 @@ import json
 import cv2
 import jsonlines  # Import the jsonlines library
 
+IMAGES_DIRECTORY = "../datasets/stylized_images"
+DETECTIONS_DIRECTORY = "../datasets/stylized_images_detections"
+OUTPUT_CROPPED_FACES_DIRECTORY = "../datasets/stylized_images_cropped"
+
 # * This program takes the output of the YOLO11 detector (predicted bounding boxes) and crops the original dataset
 
 def crop_face(image, detection):
@@ -78,9 +82,5 @@ def process_images_and_detections(images_dir, detections_dir, output_dir):
                 else:
                     print(f"Warning: No detection file found for {filename}")
 
-# edit the relative paths to images and detections if necessary
-images_directory = "../datasets/WikiFace"
-detections_directory = "../datasets/WikiFaceDetectionOutput/detections"
-output_faces_directory = "../datasets/WikiFaceCropped2"
 
-process_images_and_detections(images_directory, detections_directory, output_faces_directory)
+process_images_and_detections(IMAGES_DIRECTORY, DETECTIONS_DIRECTORY, OUTPUT_CROPPED_FACES_DIRECTORY)
