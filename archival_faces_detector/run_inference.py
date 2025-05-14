@@ -114,8 +114,9 @@ def run_inference_on_image_iterator(image_iterator: Iterable[Path], model: YOLO)
 
 
 # ! default: use_tqdm: bool = False; image_directory.rglob("*.jpg"))
+# unfortunatley ... Path.rglob() doesn’t support multiple patterns in a single string
 def run_inference_on_image_directory(image_directory: Path, model: YOLO, use_tqdm: bool = True):
-    image_iterator = filter(Path.is_file, image_directory.rglob("*.jpeg"))
+    image_iterator = filter(Path.is_file, image_directory.rglob("*.jpg"))
     if use_tqdm:
         from tqdm import tqdm
         image_iterator = tqdm(image_iterator, desc="Processing images")
