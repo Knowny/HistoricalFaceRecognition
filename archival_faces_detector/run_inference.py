@@ -1,3 +1,4 @@
+# PROVIDED BY SUPERVISOR
 from ultralytics import YOLO
 from ultralytics.engine.results import Results
 import argparse
