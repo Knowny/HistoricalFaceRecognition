@@ -13,9 +13,6 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-import onnxruntime as ort
-ort.set_default_logger_severity(3) # silence provides logs when executing
-
 from diffusers import EulerDiscreteScheduler, T2IAdapter
 from diffusers.utils import load_image
 from huggingface_hub import hf_hub_download
