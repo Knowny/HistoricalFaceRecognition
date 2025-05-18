@@ -129,3 +129,6 @@ ArchivalFaces_2024_08_07_fold_0_yolo11l.pt
 # FINETUNING FILES
 runs
 adaface_checkpoints
+
+# MODELS
+finetuned_facenet/
