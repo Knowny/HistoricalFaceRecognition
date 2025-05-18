@@ -7,6 +7,7 @@ pretrained model: InceptionResnetV1
 project: KNN Face Recognition
 version: 2.0
 author: Tereza Magerkova, xmager00
+        Simona Janosikova, xjanos19
 """
 from facenet_pytorch import InceptionResnetV1
 import torch
