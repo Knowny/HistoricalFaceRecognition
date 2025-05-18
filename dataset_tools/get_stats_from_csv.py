@@ -1,25 +1,37 @@
-# code used only during the dataset cleanup
-# creates a txt file containing dataset statistics (used for the manual cleaning)
+#!/usr/bin/env python3
+"""
+Used during dataset cleanup to generate summary statistics and sanity checks.
+Creates a text file with:
+- Dataset size and identity count
+- Confidence histogram
+- List of low-confidence face crops
+- Duplicates (images with multiple aligned faces)
+- Identities with only one source image (problematic for training)
 
+filename: create_csv_after_cleaning.py
+project: KNN Face Recognition
+version: 1.0
+author: Tomas Husar, xhusar11
+"""
 import pandas as pd
 from collections import defaultdict
 import contextlib
 
-# * Define where to print
-# OUTPUT_FILE = "stylized_images_aligned_112_stats_output_02.txt"
+# * Output file for statistics
 OUTPUT_FILE = "stylized_images_112_stats_output.txt"
 # OUTPUT_FILE = "wiki_face_112_stats_output.txt"
 
-# * Load CSV (align_faces.py/create_csv_after_cleaning.py output)
+# * Aligned face metadata CSV (output from: align_faces.py or create_csv_after_cleaning.py)
 CSV_FILE = "stylized_images_112_fin.csv"
 # CSV_FILE = "wiki_face_112_fin.csv"
 
+# * Load the CSV
 df = pd.read_csv(CSV_FILE, sep=';')
 
-# Constants for binning
+# * Constants for binning confidence scores
 CONFIDENCE_INTERVALS = 10   # 0.0-0.1; 0.1-0.2; ...
 
-# Stats
+# * Basic dataset stats
 num_images = len(df)
 num_identities = df["identity"].nunique()
 
@@ -29,7 +41,7 @@ for conf in df["confidence"]:
     bin_index = int(conf * CONFIDENCE_INTERVALS)
     confidence_histogram[bin_index] += 1
 
-# Redirect standard output to file
+# * Redirect standard output to file
 with open(OUTPUT_FILE, 'w') as f, contextlib.redirect_stdout(f):
 
     print(f"Number of images: {num_images}")
@@ -47,7 +59,6 @@ with open(OUTPUT_FILE, 'w') as f, contextlib.redirect_stdout(f):
         print(path)
 
     # note: ! AFTER MANUAL CLEANING, THIS SHOULD NOT PRINT ANY
-
     print("\nOriginal images with multiple aligned versions:")
     duplicates = df["original_image"].value_counts()
     duplicates = duplicates[duplicates > 1]
