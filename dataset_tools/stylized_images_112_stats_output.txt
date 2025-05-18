@@ -1,0 +1,19 @@
+Number of images: 14975
+Number of identities: 999
+
+Confidence score distribution:
+[0.3 - 0.4): 1
+[0.5 - 0.6): 1
+[0.6 - 0.7): 1
+[0.7 - 0.8): 13
+[0.8 - 0.9): 13598
+[0.9 - 1.0): 1361
+
+Images with confidence < 0.7:
+000048/13_03.jpg
+000710/00_01.jpg
+000969/00_02.jpg
+
+Original images with multiple aligned versions:
+
+Identities with only one original image:

@@ -1,0 +1,44 @@
+Number of images: 3223
+Number of identities: 1536
+
+Confidence score distribution:
+[0.3 - 0.4): 1
+[0.4 - 0.5): 2
+[0.5 - 0.6): 8
+[0.6 - 0.7): 16
+[0.7 - 0.8): 166
+[0.8 - 0.9): 3012
+[0.9 - 1.0): 18
+
+Images with confidence < 0.7:
+Alfredo Keil/1_02.jpg
+Cayetano Sánchez Bustillo/0_02.jpg
+Charles Smart Roy/0_01.jpg
+Cornelis Lely/1_01.jpg
+Dorothea Beale/1_01.jpg
+Edward Morris, 1st Baron Morris/1_15.jpg
+Egor Alipanov/1_01.jpg
+Giacinto Albini/0_01.jpg
+Giuseppe Giovanni Antonio Meneghini/0_01.jpg
+Guilherme Gomes Fernandes/1_01.jpg
+John Alexander Dowie/0_02.jpg
+John Gadsby Chapman/1_01.jpg
+John Robertson/1_02.jpg
+Joseph Pennell/1_01.jpg
+Jānis Frīdrihs Baumanis/1_01.jpg
+Lala Deen Dayal/0_01.jpg
+Leon Barritt/0_01.jpg
+Léon Bonnat/0_01.jpg
+Matti Äyräpää/0_01.jpg
+Nakamura Shikan IV/0_01.jpg
+Nils Gustaf Nordenskiöld/0_01.jpg
+Orazio Antinori/1_01.jpg
+Simon Dubnow/0_02.jpg
+Townsend Harris/1_01.jpg
+Vladimir Dmitriyev/1_01.jpg
+William Branwhite Clarke/1_01.jpg
+William Féron/1_01.jpg
+
+Original images with multiple aligned versions:
+
+Identities with only one original image:
