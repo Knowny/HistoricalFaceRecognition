@@ -8,11 +8,11 @@ import contextlib
 # * Define where to print
 # OUTPUT_FILE = "stylized_images_aligned_112_stats_output_02.txt"
 OUTPUT_FILE = "stylized_images_112_stats_output.txt"
-OUTPUT_FILE = "wiki_face_112_stats_output.txt"
+# OUTPUT_FILE = "wiki_face_112_stats_output.txt"
 
 # * Load CSV (align_faces.py/create_csv_after_cleaning.py output)
-# CSV_FILE = "stylized_images_112_fin.csv"
-CSV_FILE = "wiki_face_112_fin.csv"
+CSV_FILE = "stylized_images_112_fin.csv"
+# CSV_FILE = "wiki_face_112_fin.csv"
 
 df = pd.read_csv(CSV_FILE, sep=';')
 
