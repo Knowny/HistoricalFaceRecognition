@@ -3,6 +3,10 @@ The goal of this project was to adapt a CNN solution to work with historical doc
 
 The theoretical background can be found in the project report disclosed with the project.
 
+This project uses these repositories<br>
+https://github.com/timesler/facenet-pytorch.git<br>
+https://github.com/TencentARC/PhotoMaker.git
+
 ## Repo structure
 ```
 HistoricalFaceRecognition
@@ -124,7 +128,6 @@ for different parameter settings use these arguments
 ```
 
 To play with more fine hyperparameters please do so in file `finetune_facenet.py`
-
 ## Authors
 This project was a term assignment for KNN 24/25L at BUT FIT
 
