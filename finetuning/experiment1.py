@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script for face recognition fine-tuning using classification head")
-    parser.add_argument('--data_dir', type=str, default="../../data/stylized", help="Path to training dataset")
+    parser.add_argument('--data_dir', type=str, default="../datasets/stylized_images_112_fin", help="Path to training dataset")
     parser.add_argument('--batch_size', type=int, default=32, help="Batch size for training and validation")
     parser.add_argument('--epochs', type=int, default=15, help="Total number of training epochs")
     parser.add_argument('--lr', type=float, default=2e-4, help="Initial learning rate for optimizer")
@@ -59,9 +59,6 @@ def main():
     # data
     train_transform = transforms.Compose([
         transforms.Resize((160, 160)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        transforms.RandomAffine(degrees=10, translate=(0.05, 0.05), scale=(0.95, 1.05)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])

@@ -72,9 +72,9 @@ pipe.fuse_lora()
 pipe.to(device)
 
 # parameters for stylization
-INPUT_ROOT  = "../casia_images"
-OUTPUT_ROOT =   "./stylized_images"
-
+INPUT_ROOT  = "../datasets/casia_images"
+OUTPUT_ROOT =   "../datasets/stylized_images"
+os.makedirs(OUTPUT_ROOT, exist_ok=True)
 NEG_PROMPT = "nude, modern clothing, makeup, watermark, text, digital artifacts, oversaturation, cartoon, bad anatomy, artificial lighting"
 STEPS       = 50
 STYLE_RATIO = 15

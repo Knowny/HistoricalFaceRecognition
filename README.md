@@ -5,28 +5,38 @@ The theoretical background can be found in the project report disclosed with the
 
 ## Repo structure
 ```
-archival_faces_detector/        # (provided by our supervisor)
-├── archival_faces_model.pt     # not provided in this repo
-└── run_inference.py            # face detector based on YOLO11
-
-baseline/
-├── utils/
-│   └── baseline_evaluate.py    # plotting of the ROC and DET
-├── face_net.py                 # baseline sollution
-└── roc_det_curves.png          # graph of baseline evaluation
-
-dataset_tools/
-├── dataset_cleanup.py          # Cleaning of the false positives (needs some more work)
-├── dataset_crop.py             # Cropping based on the detection results
-├── dataset_statistics.py       # Basic datasets statistics from the detections 
-└── dataset_statistics.txt      # output of the dataset_statistics.py
-
-datasets_examples/
-├── WikiFace                    # Original dataset (provided by our supervisor)
-├── WikiCleaned                 # output of the dataset_cleanup.py
-├── WikiCropped                 # output of the dataset_crop.py
-└── WikiDetectionOutput         # Output of the ArchivalFacesDetector
+HistoricalFaceRecognition
+├── alignment
+    ├── align_faces.py
+    └── face_alignment.py
+├── archival_faces_detector
+    └── run_inference.py
+├── baseline                   # FOR AdaFace baseline
+    ├── utils
+        └── baseline_evaluate.py
+    ├── adaface.py
+    ├── facenet.py
+    └── net.py
+├── dataset_tools
+    ├── create_csv_after_cleaning.py
+    ├── get_stats_from_csv.py
+    └── *.csv                 # cleaned dataset CSV files  
+├── dataset_examples          # samples from data used in project
+├── finetuning
+    ├── eval_experiment.py
+    ├── experiment1.py
+    ├── experiment2.py
+    └── facenet_finetuning.py # relevant file
+├── models/facenet            # loadable model .pth file
+├── style_transfer
+    ├── extract_casia.py
+    ├── prompts.txt
+    └── run_photomaker.py
+├── [datasets]
+├── README.md
+└── *_requirements.txt        # all requirements files
 ```
+
 ## Getting Started
 To get started with the pipeline first clone the repository. Then install all necessary requirements
 ```
@@ -40,7 +50,7 @@ The use of an environment (Anaconda/Miniconda or venv) is highly recommended
 >
 > The data sources are **not** a part of this repository. <br>
 > However a part of this project was about providing a cleaned and aligned dataset 
-> which can be downloaded from here <br>
+> which can be downloaded from a link provided in assignment
 >
 > After download please refer to the [repo structure](#repo-structure). <br>
 

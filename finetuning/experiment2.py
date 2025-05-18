@@ -1,4 +1,11 @@
-# fine_tune_facenet.py
+#!/usr/bin/env python3
+"""
+Further experimentation with scheduler
+
+file: experiment2.py
+project: KNN Face Recognition
+author: Tereza Magerkova (xmager00), Tomas Husar (xhusar11)
+"""
 
 import os
 import random
@@ -72,12 +79,12 @@ class TripletFaceDataset(Dataset):
     
 def parse_args():
     parser = argparse.ArgumentParser(description="Finetune")
-    parser.add_argument('--data_dir', type=str, default="./data/stylized", help="Path to the train data")
+    parser.add_argument('--data_dir', type=str, default="../datasets/stylized_images_112_fin", help="Path to the train data")
     parser.add_argument('--lr', type=float, default=1e-4, help="Learning Rate")
     parser.add_argument('--epochs', type=int, default=10, help="Epochs")
     parser.add_argument('--batch_size', type=int, default=16, help="Batch Size")
     parser.add_argument('--margin', type=float, default=0.5, help="Margin for TripletLoss")
-    parser.add_argument('--ckpt', type=str, default="./models/model.pth", help="Save path for the model checkpoint")
+    parser.add_argument('--ckpt', type=str, default="../models/facenet/model.pth", help="Save path for the model checkpoint")
 
     return parser.parse_args()
 
@@ -102,9 +109,10 @@ def train_facenet():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    # Loss and optimizer
+    # Loss, optimizer scheduler
     criterion = TripletLoss(margin=args.margin)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+
     total_steps = args.epochs * len(dataloader)
     max_lr = 1e-3
     final_lr = args.lr * 0.1
@@ -144,6 +152,5 @@ def train_facenet():
     torch.save(model.state_dict(), args.ckpt)
     print(f"Model saved to {args.ckpt}")
 
-# Example usage
 if __name__ == "__main__":
     train_facenet()

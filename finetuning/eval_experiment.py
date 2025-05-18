@@ -4,9 +4,9 @@ Finetuning experiments evaluation
 2) finetune the pretrained model
 3) reevaluate on the new model
 
-file: .py
+file: eval_experiment.py
 project: KNN Face Recognition
-author: Tereza Magerkov (xmager00), Tomas Husar (xhusar11)
+author: Tereza Magerkova (xmager00), Tomas Husar (xhusar11)
 """
 
 import argparse
@@ -83,7 +83,7 @@ def main():
     # ------------------ taken from baseline/face_net.py ------------------
     def get_embedding(tensor):
         with torch.no_grad():
-            tensor = tensor.to(device)  # <-- move input to model's device
+            tensor = tensor.to(device)  # edit: runs on cuda
             return model(tensor).cpu().numpy()
 
     # gater images and labels
@@ -126,7 +126,7 @@ def main():
     # DET curve
     det_fpr, det_fnr, _ = det_curve(y_true, y_scores)
 
-    # EER - points where fpr ~ fnr
+    # EER - point where fpr ~ fnr
     eer_idx = np.nanargmin(np.abs(fnr - fpr))
     eer = (fpr[eer_idx] + fnr[eer_idx]) / 2
     print(f"Equal Error Rate (EER): {eer:.4f}")
