@@ -66,12 +66,19 @@ class FaceNetDataset(Dataset):
 #                               FaceNet
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-model = InceptionResnetV1(pretrained='vggface2').eval()
+# * Pretrained
+# model = InceptionResnetV1(pretrained='vggface2').eval()
+
+# * finetuned model
+model = InceptionResnetV1(pretrained=None, classify=False)
+model.load_state_dict(torch.load("/home/tomas/1mit/knn/HistoricalFaceRecognition/models/finetuned_facenet/finetuned_facenet_01.pth"))
+model.eval()
 
 transform = transforms.Compose([
     transforms.Resize((160, 160)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    # * Achieves higher AUC without the normalization
+    # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -83,7 +90,7 @@ def main():
     parser.add_argument("--limit_identities", type=int, default=None, help="Limit the number of identities to process. There are not that many (on WikiFace data)")    
     parser.add_argument("--print_similarities", type=bool, default=False, help="Prints pair labels and cosine similarity.")
     parser.add_argument("--evaluate_model", type=bool, default=True, help="Plot the ROC and DET curves based on the labels and model predictions.")
-    parser.add_argument("--dataset_root", type=str, default="../datasets/stylized_images", help="Path to the root directory of the (cleaned) dataset images (e.g., ../datasets/WikiFaceCleaned).")
+    parser.add_argument("--dataset_root", type=str, default="../datasets/wiki_face_112_fin", help="Path to the root directory of the (cleaned) dataset images (e.g., ../datasets/WikiFaceCleaned).")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size for embedding computation.")
     args = parser.parse_args()
 
